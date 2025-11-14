@@ -79,7 +79,7 @@ router.post('/register', async (req, res) => {
             }
 
             const confirmationToken = jwt.sign({ email: sanitizedEmail }, config.jwtSecret, { expiresIn: '1d' });
-            const confirmationLink = `http://localhost:3000/api/auth/confirm/${confirmationToken}`;
+            const confirmationLink = `/api/auth/confirm/${confirmationToken}`; //http://localhost:3000
             sendEmail(sanitizedEmail, 'Confirm Your Book Tracker Account', `<p>Click <a href="${confirmationLink}">here</a> to confirm your account.</p>`)
               .then(() => {
                 res.json({ message: 'Registered successfully! Check your email for confirmation.' });
