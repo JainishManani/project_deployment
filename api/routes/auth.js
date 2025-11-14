@@ -70,7 +70,7 @@ router.post('/register', async (req, res) => {
         }
 
         db.query(
-          'INSERT INTO Users (Username, Email, PasswordHash, IsConfirmed) VALUES (?, ?, ?, ?)',
+          'INSERT INTO users (Username, Email, PasswordHash, IsConfirmed) VALUES (?, ?, ?, ?)',
           [sanitizedUsername, sanitizedEmail, hash, false],
           (insertErr) => {
             if (insertErr) {
