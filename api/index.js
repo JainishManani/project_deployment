@@ -83,8 +83,9 @@ app.use(cors({
   origin: [
     'http://127.0.0.1:8080', 
     'https://csunix.mohawkcollege.ca/~sa000882016/Final_Project_frontend/login.html',
-    'http://localhost:3000',  // Add for Vercel dev
-    'https://your-project.vercel.app'  // Add your live Vercel URL after deploy
+    'http://localhost:3000',  
+    'https://project-jainish-manani-deploy.vercel.app', 
+    'https://project-deployment-sepia-sigma.vercel.app' 
   ],
   credentials: true
 }));
