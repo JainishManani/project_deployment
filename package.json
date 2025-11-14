@@ -1,0 +1,12 @@
+{
+  "name": "book-tracker",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "concurrently \"npx http-server . -p 8080\" \"node api/index.js\"",
+    "build": "echo 'Static frontend, no build needed'",
+    "start": "node api/index.js"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

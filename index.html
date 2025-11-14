@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book Tracker</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Header Placeholder -->
+  <div id="header"></div>
+
+  <!-- Main Content: Landing Page Hero and Mood Teaser -->
+  <main class="container my-5">
+    <section class="text-center mb-5">
+      <h1>Welcome to Book Tracker</h1>
+      <p class="lead">Track books you've read, are reading, or plan to read with ease.</p>
+      <a href="signup.html" class="btn btn-primary btn-lg" aria-label="Get started with Book Tracker">Get Started</a>
+    </section>
+
+    <!-- Mood Teaser Section (Inspired by StoryGraph) -->
+    <section class="mood-teaser">
+      <h2 class="text-center mb-4">Discover Books by Mood</h2>
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title">Adventurous</h5>
+              <p class="card-text">Embark on thrilling journeys and epic quests.</p>
+              <a href="search.html?mood=Adventurous" class="btn btn-outline-primary" aria-label="Explore Adventurous books">Explore</a>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 mb-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title">Emotional</h5>
+              <p class="card-text">Heartfelt stories that tug at your emotions.</p>
+              <a href="search.html?mood=Emotional" class="btn btn-outline-primary" aria-label="Explore Emotional books">Explore</a>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 mb-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title">Funny</h5>
+              <p class="card-text">Light-hearted reads to make you laugh.</p>
+              <a href="search.html?mood=Funny" class="btn btn-outline-primary" aria-label="Explore Funny books">Explore</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer Placeholder -->
+  <div id="footer"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+  <script src="script.js"></script>
+</body>
+</html>

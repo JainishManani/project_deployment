@@ -1,0 +1,159 @@
+/* Custom styles for Book Tracker */
+body {
+  font-family: Arial, sans-serif;
+  padding-bottom: 60px; /* Space for fixed footer */
+}
+
+/* Header: Navbar */
+.navbar {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Main: Hero Section */
+main {
+  min-height: calc(100vh - 120px); 
+}
+h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+.lead {
+  font-size: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.btn-primary {
+  background-color: #007bff;
+  border-color: #007bff;
+}
+
+/* Footer */
+footer {
+  background-color: #343a40;
+}
+footer p {
+  margin: 0;
+}
+footer a {
+  color: #fff;
+  text-decoration: none;
+}
+footer a:hover {
+  text-decoration: underline;
+}
+
+/* Mobile-first adjustments */
+@media (max-width: 576px) {
+  h1 {
+    font-size: 2rem;
+  }
+  .lead {
+    font-size: 1rem;
+  }
+}
+/* Mood Teaser Section */
+.mood-teaser .card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.mood-teaser .card-title {
+  font-size: 1.25rem;
+}
+.mood-teaser .card-text {
+  font-size: 1rem;
+}
+.mood-teaser .btn-outline-primary {
+  margin-top: 1rem;
+}
+
+/* Mobile adjustments for teaser */
+@media (max-width: 576px) {
+  .mood-teaser .card {
+    margin-bottom: 1rem;
+  }
+}
+/* Login/Signup Form Styles */
+.card {
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+.form-label {
+  font-weight: bold;
+}
+.alert-danger {
+  margin-top: 1rem;
+}
+
+/* Mobile adjustments */
+@media (max-width: 576px) {
+  .card-body {
+    padding: 1rem;
+  }
+}
+/* Dashboard Styles */
+.list-group-item {
+  border-bottom: 1px solid #ddd;
+}
+.card-title {
+  font-size: 1.25rem;
+}
+
+/* Mobile adjustments */
+@media (max-width: 576px) {
+  .row > .col-md-6 {
+    width: 100%;
+  }
+}
+
+/* Books Page */
+.book-card {
+  margin-bottom: 1rem;
+}
+.book-card img {
+  max-width: 100px;
+  height: auto;
+}
+.book-card .card-body {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+@media (max-width: 576px) {
+  .book-card .card-body {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+/* Dashboard Book List */
+.book-preview {
+  margin-bottom: 1rem;
+}
+.book-preview img {
+  max-width: 80px;
+  height: auto;
+}
+.book-preview .card-body {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+@media (max-width: 576px) {
+  .book-preview .card-body {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+#auth-nav .nav-link, #auth-nav .navbar-text {
+  color: #fff;
+  padding: 0.5rem 1rem;
+}
+#auth-nav .nav-link:hover {
+  color: #ccc;
+}
+/* Search Page */
+.pagination .page-link {
+  color: #007bff;
+}
+.pagination .page-item.disabled .page-link {
+  color: #6c757d;
+}
