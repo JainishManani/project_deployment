@@ -1,5 +1,5 @@
 const express = require('express');
-const fetch = require('node-fetch');
+const fetch = require('node-fetch').default || require('node-fetch');
 const validator = require('validator');
 const db = require('../db');
 const { authenticateToken } = require('./auth');
@@ -7,185 +7,236 @@ const config = require('../config');
 
 const router = express.Router();
 
+// updated and used on 28-11-2025
+
+// GET /api/books
 router.get('/', authenticateToken, (req, res) => {
   db.query(
-    'SELECT ub.UserBookID, b.BookID, b.Title, b.Author, b.CoverURL, ub.ReadingStatus, ub.Progress, ub.Owned, ub.DNF FROM userbooks ub JOIN books b ON ub.BookID = b.BookID WHERE ub.UserID = ?',
+    `SELECT ub.UserBookID, b.BookID, b.Title, b.Author, b.CoverURL,
+            ub.ReadingStatus, ub.Progress, ub.Owned, ub.DNF
+     FROM userbooks ub
+     JOIN books b ON ub.BookID = b.BookID
+     WHERE ub.UserID = ?
+     ORDER BY ub.UserBookID DESC`,
     [req.user.UserID],
     (err, results) => {
-      if (err) {
-        console.error('Query error:', err.message, err.stack);
-        return res.status(500).json({ error: 'Failed to fetch books' });
-      }
+      if (err) return res.status(500).json({ error: 'Failed to fetch your books' });
       res.json(results);
     }
   );
 });
 
+// POST /api/books - Add book from Google Books
 router.post('/', authenticateToken, async (req, res) => {
-  const { query, readingStatus, progress, owned, dnf } = req.body;
-  if (!query || !validator.isAlphanumeric(query.replace(/\s/g, ''))) {
-    return res.status(400).json({ error: 'Invalid query (alphanumeric)' });
+  const { query, readingStatus, progress = 0, owned = false, dnf = false } = req.body;
+
+  if (!query || typeof query !== 'string' || query.trim().length < 1) {
+    return res.status(400).json({ error: 'Search query is required' });
   }
   if (!['Read', 'Reading', 'To Read'].includes(readingStatus)) {
     return res.status(400).json({ error: 'Invalid reading status' });
   }
-  if (!Number.isInteger(progress) || progress < 0 || progress > 100) {
-    return res.status(400).json({ error: 'Invalid progress (0-100)' });
+  const progressNum = parseInt(progress, 10);
+  if (!Number.isInteger(progressNum) || progressNum < 0 || progressNum > 100) {
+    return res.status(400).json({ error: 'Progress must be 0–100' });
   }
 
   try {
-    const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&key=${config.googleBooksApiKey}`;
+    const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query.trim())}&key=${config.googleBooksApiKey}&maxResults=1`;
     const response = await fetch(url);
+    if (!response.ok) return res.status(502).json({ error: 'Google Books API error' });
+
     const data = await response.json();
-    if (!data.items || data.items.length === 0) {
-      return res.status(404).json({ error: 'Book not found' });
-    }
+    if (!data.items?.length) return res.status(404).json({ error: 'Book not found' });
 
     const book = data.items[0].volumeInfo;
+
     const bookData = {
-      title: book.title || 'Unknown',
-      author: book.authors?.join(', ') || 'Unknown',
-      type: book.categories?.includes('Fiction') ? 'Fiction' : 'Non-Fiction',
-      mood: book.categories?.join(',') || null,
-      pace: null,
-      isbn: book.industryIdentifiers?.find(id => id.type === 'ISBN_13')?.identifier || null,
-      summary: book.description || null,
-      coverUrl: book.imageLinks?.thumbnail || null,
-      addedByUserId: req.user.UserID
+      title: book.title?.trim() || 'Unknown Title',
+      author: Array.isArray(book.authors) ? book.authors.join(', ') : 'Unknown Author',
+      type: Array.isArray(book.categories) && book.categories.some(c => /fiction/i.test(c)) ? 'Fiction' : 'Non-Fiction',
+      mood: Array.isArray(book.categories) ? book.categories.join(', ') : null,
+      isbn: book.industryIdentifiers?.find(i => i.type.includes('ISBN'))?.identifier || null,
+      summary: typeof book.description === 'string' ? book.description.slice(0, 2000) : null,
+      coverUrl: book.imageLinks?.thumbnail || book.imageLinks?.smallThumbnail || null
     };
 
+    // Insert or get existing book
     db.query(
-      'INSERT INTO Books (Title, Author, Type, Mood, Pace, ISBN, Summary, CoverURL, AddedByUserID) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [bookData.title, bookData.author, bookData.type, bookData.mood, bookData.pace, bookData.isbn, bookData.summary, bookData.coverUrl, bookData.addedByUserId],
+      `INSERT IGNORE INTO books (Title, Author, Type, Mood, ISBN, Summary, CoverURL, AddedByUserID)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [bookData.title, bookData.author, bookData.type, bookData.mood, bookData.isbn, bookData.summary, bookData.coverUrl, req.user.UserID],
       (err, result) => {
-        if (err) {
-          console.error('Insert book error:', err.message, err.stack);
-          return res.status(500).json({ error: 'Failed to add book' });
-        }
+        if (err) return res.status(500).json({ error: 'Failed to save book' });
 
-        const bookId = result.insertId;
-        db.query(
-          'INSERT INTO UserBooks (UserID, BookID, ReadingStatus, Progress, Owned, DNF) VALUES (?, ?, ?, ?, ?, ?)',
-          [req.user.UserID, bookId, readingStatus, progress, owned || false, dnf || false],
-          (err2) => {
-            if (err2) {
-              console.error('Insert userbook error:', err2.message, err2.stack);
-              return res.status(500).json({ error: 'Failed to link book to user' });
+        const bookId = result.insertId || null;
+
+        const finalize = (id) => {
+          db.query(
+            `INSERT INTO userbooks (UserID, BookID, ReadingStatus, Progress, Owned, DNF)
+             VALUES (?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+               ReadingStatus = VALUES(ReadingStatus),
+               Progress = VALUES(Progress),
+               Owned = VALUES(Owned),
+               DNF = VALUES(DNF)`,
+            [req.user.UserID, id, readingStatus, progressNum, owned ? 1 : 0, dnf ? 1 : 0],
+            (err2) => {
+              if (err2) return res.status(500).json({ error: 'Failed to add to library' });
+              res.status(201).json({ message: 'Book added!', bookId: id });
             }
-            res.json({ message: 'Book added successfully', bookId });
-          }
-        );
+          );
+        };
+
+        if (bookId) {
+          finalize(bookId);
+        } else {
+          db.query('SELECT BookID FROM books WHERE Title = ? AND Author = ? LIMIT 1', [bookData.title, bookData.author], (err3, rows) => {
+            if (err3 || !rows.length) return res.status(500).json({ error: 'Book exists but ID not found' });
+            finalize(rows[0].BookID);
+          });
+        }
       }
     );
   } catch (err) {
-    console.error('API error:', err.message, err.stack);
+    console.error(err);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
+// PUT /api/books/:id - Update status/progress
 router.put('/:id', authenticateToken, (req, res) => {
-  const { id } = req.params;
-  const { readingStatus, progress, owned, dnf } = req.body;
-  if (!['Read', 'Reading', 'To Read'].includes(readingStatus)) {
-    return res.status(400).json({ error: 'Invalid reading status' });
-  }
-  if (!Number.isInteger(progress) || progress < 0 || progress > 100) {
-    return res.status(400).json({ error: 'Invalid progress (0-100)' });
+  const userBookId = parseInt(req.params.id, 10);
+  if (!Number.isInteger(userBookId) || userBookId <= 0) {
+    return res.status(400).json({ error: 'Invalid book ID' });
   }
 
+  const updates = [];
+  const values = [];
+  const allowed = ['readingStatus', 'progress', 'owned', 'dnf'];
+
+  Object.keys(req.body).forEach(key => {
+    if (allowed.includes(key)) {
+      if (key === 'progress') {
+        const p = parseInt(req.body[key], 10);
+        if (Number.isInteger(p) && p >= 0 && p <= 100) {
+          updates.push('Progress = ?');
+          values.push(p);
+        }
+      } else if (key === 'readingStatus' && ['Read', 'Reading', 'To Read'].includes(req.body[key])) {
+        updates.push('ReadingStatus = ?');
+        values.push(req.body[key]);
+      } else if (key === 'owned' || key === 'dnf') {
+        updates.push(`${key === 'owned' ? 'Owned' : 'DNF'} = ?`);
+        values.push(req.body[key] ? 1 : 0);
+      }
+    }
+  });
+
+  if (updates.length === 0) return res.status(400).json({ error: 'Nothing to update' });
+
+  values.push(userBookId, req.user.UserID);
+
   db.query(
-    'UPDATE UserBooks SET ReadingStatus = ?, Progress = ?, Owned = ?, DNF = ? WHERE UserBookID = ? AND UserID = ?',
-    [readingStatus, progress, owned || false, dnf || false, id, req.user.UserID],
+    `UPDATE userbooks SET ${updates.join(', ')} WHERE UserBookID = ? AND UserID = ?`,
+    values,
     (err, result) => {
-      if (err) {
-        console.error('Update error:', err.message, err.stack);
-        return res.status(500).json({ error: 'Failed to update book' });
-      }
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ error: 'Book not found or not owned by user' });
-      }
-      res.json({ message: 'Book updated successfully' });
+      if (err) return res.status(500).json({ error: 'Update failed' });
+      if (result.affectedRows === 0) return res.status(404).json({ error: 'Book not found' });
+      res.json({ message: 'Updated!' });
     }
   );
 });
 
+// DELETE /api/books/:id
 router.delete('/:id', authenticateToken, (req, res) => {
-  const { id } = req.params;
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid ID' });
+
   db.query('DELETE FROM userbooks WHERE UserBookID = ? AND UserID = ?', [id, req.user.UserID], (err, result) => {
-    if (err) {
-      console.error('Delete error:', err.message, err.stack);
-      return res.status(500).json({ error: 'Failed to delete book' });
-    }
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Book not found or not owned by user' });
-    }
-    res.json({ message: 'Book deleted successfully' });
+    if (err) return res.status(500).json({ error: 'Delete failed' });
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'Not found' });
+    res.json({ message: 'Removed from library' });
   });
 });
 
-router.get('/search', authenticateToken, (req, res) => {
-  const { query, mood, type, status, page = 1, limit = 10 } = req.query;
-  const offset = (page - 1) * limit;
-  let sql = 'SELECT DISTINCT b.BookID, b.Title, b.Author, b.CoverURL, ub.ReadingStatus, ub.Progress, ub.Owned, ub.DNF FROM books b LEFT JOIN userbooks ub ON b.BookID = ub.BookID AND ub.UserID = ? WHERE 1=1';
-  const params = [req.user.UserID];
+// GET /api/books/search → Updated to use Google Books API 
+// Brfoe: Local DB search
+router.get('/search', authenticateToken, async (req, res) => {
+  let { query = '', page = 1, limit = 10 } = req.query;  
 
-  if (query) {
-    sql += ' AND (b.Title LIKE ? OR b.Author LIKE ?)';
-    params.push(`%${query}%`, `%${query}%`);
-  }
-  if (mood) {
-    sql += ' AND b.Mood LIKE ?';
-    params.push(`%${mood}%`);
-  }
-  if (type) {
-    sql += ' AND b.Type = ?';
-    params.push(type);
-  }
-  if (status) {
-    sql += ' AND ub.ReadingStatus = ?';
-    params.push(status);
+  if (!query || query.trim() === '') {
+    return res.json({ books: [], total: 0, page: 1, limit: 10 });
   }
 
-  sql += ' LIMIT ? OFFSET ?';
-  params.push(parseInt(limit), parseInt(offset));
+  page = Math.max(1, parseInt(page, 10) || 1);
+  limit = 10;  
+  const startIndex = (page - 1) * limit;
 
-  db.query(sql, params, (err, results) => {
-    if (err) {
-      console.error('Search error:', err.message, err.stack);
-      return res.status(500).json({ error: 'Failed to search books' });
+  try {
+    const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query.trim())}&key=${config.googleBooksApiKey}&maxResults=${limit}&startIndex=${startIndex}`;
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!response.ok) {
+      return res.status(502).json({ error: 'Google Books API error' });
     }
-    db.query('SELECT COUNT(DISTINCT b.BookID) as total FROM books b LEFT JOIN userbooks ub ON b.BookID = ub.BookID AND ub.UserID = ? WHERE 1=1' + sql.split('WHERE 1=1')[1].split('LIMIT')[0], params.slice(0, -2), (countErr, countResults) => {
-      if (countErr) {
-        console.error('Count error:', countErr.message, countErr.stack);
-        return res.status(500).json({ error: 'Failed to count books' });
-      }
-      res.json({
-        books: results,
-        total: countResults[0].total,
-        page: parseInt(page),
-        limit: parseInt(limit)
-      });
+
+    const books = (data.items || []).map(item => {
+      const v = item.volumeInfo;
+      return {
+        BookID: null,
+        Title: v.title || 'No Title',
+        Author: Array.isArray(v.authors) ? v.authors.join(', ') : 'Unknown Author',
+        CoverURL: v.imageLinks?.thumbnail || v.imageLinks?.smallThumbnail || null,
+        ReadingStatus: null,
+        Progress: null,
+        Owned: null,
+        DNF: null,
+        UserBookID: null
+      };
     });
-  });
-});
 
-router.get('/autocomplete', authenticateToken, (req, res) => {
-  const { query } = req.query;
-  if (!query || !validator.isLength(query, { min: 1, max: 100 })) {
-    return res.status(400).json({ error: 'Invalid query' });
+    
+    res.json({
+      books,
+      total: data.totalItems || 0,
+      page: parseInt(page),
+      limit: 10
+    });
+
+  } catch (err) {
+    console.error('Search error:', err);
+    res.status(500).json({ error: 'Server error' });
   }
-
-  db.query(
-    'SELECT DISTINCT Title, Author FROM books WHERE Title LIKE ? OR Author LIKE ? LIMIT 5',
-    [`%${query}%`, `%${query}%`],
-    (err, results) => {
-      if (err) {
-        console.error('Autocomplete error:', err.message, err.stack);
-        return res.status(500).json({ error: 'Failed to fetch suggestions' });
-      }
-      res.json(results);
-    }
-  );
 });
+
+// GET /api/books/autocomplete
+// Brfoe: Local DB autocomplete
+router.get('/autocomplete', authenticateToken, async (req, res) => {
+  const { query } = req.query;
+  if (!query || query.trim().length < 2) return res.json([]);
+
+  try {
+    const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query.trim())}&key=${config.googleBooksApiKey}&maxResults=3`;
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!data.items) return res.json([]);
+
+    const results = data.items.slice(0, 10).map(item => {
+      const v = item.volumeInfo;
+      return {
+        Title: v.title || 'Unknown',
+        Author: Array.isArray(v.authors) ? v.authors.join(', ') : 'Unknown'
+      };
+    });
+
+    res.json(results);
+  } catch (err) {
+    res.json([]);
+  }
+});
+
 
 module.exports = router;
