@@ -105,7 +105,7 @@ router.get('/confirm/:token', (req, res) => {
     jwt.verify(token, config.jwtSecret, (err, decoded) => {
       if (err) return res.status(400).json({ error: 'Invalid or expired token' });
 
-      db.query('UPDATE Users SET Role = ?, IsConfirmed = ? WHERE Email = ?', ['User', true, decoded.email], (updateErr) => {
+      db.query('UPDATE users SET Role = ?, IsConfirmed = ? WHERE Email = ?', ['User', true, decoded.email], (updateErr) => {
         if (updateErr) {
           console.error('Update error:', updateErr.message, updateErr.stack);
           return res.status(500).json({ error: 'Server error' });
@@ -216,7 +216,7 @@ router.post('/reset-password/:token', (req, res) => {
           return res.status(500).json({ error: 'Hashing error' });
         }
 
-        db.query('UPDATE Users SET PasswordHash = ? WHERE Email = ?', [hash, decoded.email], (updateErr) => {
+        db.query('UPDATE users SET PasswordHash = ? WHERE Email = ?', [hash, decoded.email], (updateErr) => {
           if (updateErr) {
             console.error('Update error:', updateErr.message, err.stack);
             return res.status(500).json({ error: 'Server error' });
