@@ -594,6 +594,22 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (window.location.pathname.includes("admin.html")) {
+      
+      fetch("/api/auth/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((response) => {
+          if (!response.ok) throw new Error("Not authenticated");
+          return response.json();
+        })
+        .then((user) => {
+          if (user.Role !== "Admin") {
+            alert("Access denied. This page is for administrators only.");
+            window.location.href = "dashboard.html";
+            return;
+          }
+        });
+
       const errorDiv = document.getElementById("error");
       const successDiv = document.getElementById("success");
       const usersList = document.getElementById("usersList");
@@ -1347,7 +1363,8 @@ document.addEventListener("DOMContentLoaded", () => {
           if (e.target.tagName === "LI") {
             searchQuery.value = e.target.dataset.query;
             autocompleteList.innerHTML = "";
-            searchForm.dispatchEvent(new Event("submit"));
+            searchQuery.focus();
+            // searchForm.dispatchEvent(new Event("submit"));
           }
         });
       }

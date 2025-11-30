@@ -17,7 +17,7 @@ router.post("/", authenticateToken, (req, res) => {
     return res.status(400).json({ error: "Invalid or missing book ID" });
   }
 
-  // Validate rating 
+  // Validate rating
   if (rating !== undefined && rating !== null) {
     const numRating = parseFloat(rating);
     if (
@@ -32,7 +32,7 @@ router.post("/", authenticateToken, (req, res) => {
     }
   }
 
-  // Validate review text 
+  // Validate review text
   if (reviewText != null) {
     const trimmedText = reviewText.toString().trim();
     if (!validator.isLength(trimmedText, { min: 1, max: 1000 })) {
@@ -135,14 +135,13 @@ router.post("/:reviewId/comments", authenticateToken, (req, res) => {
   );
 });
 
-// GET /api/reviews/:reviewId/comments 
+// GET /api/reviews/:reviewId/comments
 router.get("/:reviewId/comments", authenticateToken, (req, res) => {
   const reviewId = parseInt(req.params.reviewId, 10);
 
   if (!Number.isInteger(reviewId) || reviewId <= 0) {
     return res.status(400).json({ error: "Invalid review ID" });
   }
-
   db.query(
     `SELECT 
        c.CommentID,

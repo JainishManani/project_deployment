@@ -8,8 +8,7 @@ const router = express.Router();
 // GET /api/stats/books-read - Books read over time
 router.get("/books-read", authenticateToken, (req, res) => {
   db.query(
-    // 'SELECT YEAR(ub.DateAdded) as year, MONTH(ub.DateAdded) as month, COUNT(*) as count FROM userbooks ub WHERE ub.UserID = ? AND ub.ReadingStatus = "Read" GROUP BY year, month',
-    'SELECT YEAR(ub.DateAdded) as year, MONTH(ub.DateAdded) as month, COUNT(*) as count FROM `userbooks` ub WHERE ub.UserID = ? AND ub.ReadingStatus = "Read" GROUP BY year, month ORDER BY year DESC, month DESC',
+    "SELECT YEAR(ub.DateAdded) as year, MONTH(ub.DateAdded) as month, COUNT(*) as count FROM userbooks ub WHERE ub.UserID = ? AND ub.ReadingStatus = 'Read' GROUP BY year, month",
     [req.user.UserID],
     (err, results) => {
       if (err) {
