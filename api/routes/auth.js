@@ -181,7 +181,7 @@ router.post('/reset', (req, res) => {
     }
 
     const resetToken = jwt.sign({ email: sanitizedEmail }, config.jwtSecret, { expiresIn: '1h' });
-    const resetLink = `http://localhost:3000/reset-password/${resetToken}`;
+    const resetLink = `https://project-deployment-sepia-sigma.vercel.app/reset-password/${resetToken}`;
     sendEmail(sanitizedEmail, 'Reset Your Book Tracker Password', `<p>Click <a href="${resetLink}">here</a> to reset your password.</p>`)
       .then(() => {
         res.json({ message: 'Password reset link sent to your email.' });

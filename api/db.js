@@ -70,7 +70,7 @@
 
 ////////////////////
 
-// db.js ←←← FINAL VERSION – 100% SAFE ON VERCEL
+//Final working code after multiple fixes
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, "../.env") });
 
